@@ -1,0 +1,596 @@
+@extends('layouts.app')
+
+@section('content')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
+<div class="container-fluid px-4 py-3">
+    <!-- Updated header to match the design with proper blue gradient -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); border-radius: 15px;">
+                <div class="card-body text-center py-4">
+                    <h4 class="text-white mb-1 fw-bold">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Tambah Data Guru & Staff
+                    </h4>
+                    <p class="text-white mb-0 opacity-90">Sistem Presensi Guru & Staff - SMA YKBBB LELES</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Added tabbed interface matching the design -->
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-sm" style="border-radius: 15px;">
+                <div class="card-body p-0">
+                    <!-- Tab Navigation -->
+                    <div class="d-flex border-bottom">
+                        <button class="btn btn-link text-decoration-none px-4 py-3 border-0 rounded-0 active-tab" 
+                                id="dataUmumTab" onclick="switchTab('dataUmum')"
+                                style="background: #74b9ff; color: white; border-radius: 15px 0 0 0 !important;">
+                            <i class="fas fa-user me-2"></i>Data Umum
+                        </button>
+                        <button class="btn btn-link text-decoration-none px-4 py-3 border-0 rounded-0" 
+                                id="jadwalTab" onclick="switchTab('jadwal')"
+                                style="background: #ddd; color: #666;">
+                            <i class="fas fa-calendar me-2"></i>Jadwal Mingguan
+                        </button>
+                    </div>
+
+                    <form action="{{ route('guru.store') }}" method="POST" id="guruForm" enctype="multipart/form-data">
+                        @csrf
+                        
+                        <!-- Data Umum Tab Content -->
+                        <div id="dataUmumContent" class="tab-content p-4">
+                            <!-- Info Box -->
+                            <div class="alert alert-info border-0 mb-4" style="background: #e3f2fd; border-radius: 10px;">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Petunjuk:</strong> Atur jadwal kerja untuk setiap hari dalam seminggu. Hari yang diset "Libur" tidak akan dihitung dalam laporan presensi.
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold text-dark mb-2">NUPTK</label>
+                                    <input type="text" name="nip" class="form-control form-control-lg border-1 @error('nip') is-invalid @enderror" 
+                                           style="border-radius: 8px; background: #f8f9fa;"
+                                           placeholder="Contoh: 198501012010011001" required value="{{ old('nip') }}">
+                                    @error('nip')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold text-dark mb-2">Nama Lengkap</label>
+                                    <input type="text" name="nama" class="form-control form-control-lg border-1 @error('nama') is-invalid @enderror" 
+                                           style="border-radius: 8px; background: #f8f9fa;"
+                                           placeholder="Contoh: Dr. Ahmad Fauzi, S.Pd., M.Pd." required value="{{ old('nama') }}">
+                                    @error('nama')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="col-12 mb-3">
+                                    <label class="form-label fw-semibold text-dark mb-2">Jabatan</label>
+                                    <input type="text" name="jabatan" class="form-control form-control-lg border-1 @error('jabatan') is-invalid @enderror" 
+                                           style="border-radius: 8px; background: #f8f9fa;"
+                                           placeholder="Contoh: Guru Informatika/TU" required value="{{ old('jabatan') }}">
+                                    @error('jabatan')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="col-12 mb-4">
+                                    <label class="form-label fw-semibold mb-2">
+                                        <i class="fas fa-credit-card text-warning me-2"></i>UID Kartu RFID
+                                    </label>
+                                    <div class="position-relative">
+                                        <!-- Made UID input readonly to prevent manual input, only RFID reader can fill it -->
+                                        <input type="text" name="uid" id="uid" class="form-control form-control-lg border-1 @error('uid') is-invalid @enderror" 
+                                               style="border-radius: 8px; background: #f8f9fa; font-family: monospace; padding-right: 50px;"
+                                               placeholder="Tempelkan kartu RFID pada reader..." required value="{{ old('uid') }}" readonly>
+                                        <div class="position-absolute top-50 end-0 translate-middle-y me-3">
+                                            <i class="fas fa-check-circle text-success fs-5" id="uid-check" style="display: none;"></i>
+                                            <i class="fas fa-wifi text-primary fs-5" id="uid-scan-icon"></i>
+                                            <div class="spinner-border spinner-border-sm text-warning" role="status" id="uid-spinner" style="display: none;">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @error('uid')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <!-- Updated status message to indicate RFID reader only -->
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        <span id="uid-status">Tempelkan kartu RFID pada reader untuk mengisi UID</span>
+                                    </small>
+                                </div>
+
+                                <!-- Bagian Registrasi Wajah (Face Recognition) -->
+                                <div class="col-12 mb-4">
+                                    <div class="card border-0 shadow-sm" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <h6 class="fw-bold text-dark mb-0">
+                                                    <i class="fas fa-camera text-primary me-2"></i>Foto & Registrasi Wajah (Face Recognition)
+                                                </h6>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <button type="button" class="btn btn-outline-primary active" id="btnModeUpload" onclick="setFaceMode('upload')">
+                                                        <i class="fas fa-upload me-1"></i> Upload Foto
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-primary" id="btnModeWebcam" onclick="setFaceMode('webcam')">
+                                                        <i class="fas fa-video me-1"></i> Gunakan Kamera
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Hidden input untuk face descriptor -->
+                                            <input type="hidden" name="face_descriptor" id="face_descriptor" value="{{ old('face_descriptor') }}">
+
+                                            <!-- Opsi Upload Foto -->
+                                            <div id="sectionUpload">
+                                                <label class="form-label text-muted small mb-1">Pilih berkas foto wajah (format: JPG, PNG max 5MB)</label>
+                                                <input type="file" name="foto" id="fotoInput" class="form-control" accept="image/jpeg,image/png,image/jpg">
+                                                @error('foto')
+                                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+
+                                            <!-- Opsi Webcam -->
+                                            <div id="sectionWebcam" style="display: none;">
+                                                <div class="text-center p-3 bg-dark rounded-3 position-relative" style="max-width: 400px; margin: 0 auto;">
+                                                    <video id="webcamVideo" autoplay muted playsinline style="width: 100%; border-radius: 8px;"></video>
+                                                    <div class="mt-2">
+                                                        <button type="button" class="btn btn-sm btn-light fw-bold" id="btnCaptureWebcam" onclick="captureFromWebcam()">
+                                                            <i class="fas fa-camera me-1 text-primary"></i> Ambil Foto Wajah
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Preview & Deteksi AI -->
+                                            <div id="facePreviewWrapper" class="mt-3 text-center" style="display: none;">
+                                                <p class="text-muted small mb-2 fw-semibold">Preview & Hasil Deteksi AI Wajah:</p>
+                                                <div class="d-inline-block position-relative border rounded-3 p-1 bg-white shadow-sm" style="max-width: 240px;">
+                                                    <img id="facePreviewImage" src="" alt="Preview Wajah" class="img-fluid rounded" style="max-height: 220px; display: block;">
+                                                    <canvas id="faceOverlayCanvas" style="position: absolute; top: 4px; left: 4px; pointer-events: none;"></canvas>
+                                                </div>
+                                            </div>
+
+                                            <!-- Status Deteksi Wajah -->
+                                            <div id="faceStatusBadge" class="mt-3 alert alert-secondary py-2 px-3 border-0 d-flex align-items-center mb-0" style="border-radius: 8px; font-size: 0.88rem;">
+                                                <i class="fas fa-info-circle me-2 fs-5" id="faceStatusIcon"></i>
+                                                <span id="faceStatusText">Pilih foto wajah atau buka kamera untuk mengekstrak fitur wajah AI.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jadwal Mingguan Tab Content -->
+                        <div id="jadwalContent" class="tab-content p-4" style="display: none;">
+                            <!-- Info Box -->
+                            <div class="alert alert-info border-0 mb-4" style="background: #e3f2fd; border-radius: 10px;">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Petunjuk:</strong> Atur jadwal kerja untuk setiap hari dalam seminggu. Hari yang diset "Libur" tidak akan dihitung dalam laporan presensi.
+                            </div>
+
+                            <!-- Schedule Table -->
+                            <div class="table-responsive">
+                                <table class="table table-borderless">
+                                    <thead>
+                                        <tr style="background: #74b9ff; color: white;">
+                                            <th class="py-3 px-4 fw-semibold" style="border-radius: 10px 0 0 10px;">Hari</th>
+                                            <th class="py-3 px-4 fw-semibold text-center">Status</th>
+                                            <th class="py-3 px-4 fw-semibold text-center">Jam Masuk</th>
+                                            <th class="py-3 px-4 fw-semibold text-center">Jam Pulang</th>
+                                            <th class="py-3 px-4 fw-semibold text-center" style="border-radius: 0 10px 10px 0;">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @php
+                                            $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+                                        @endphp
+                                        @foreach($days as $day)
+                                        <tr class="border-bottom">
+                                            <td class="py-3 px-4 fw-semibold">{{ $day }}</td>
+                                            <td class="py-3 px-4 text-center">
+                                                <div class="form-check form-switch d-flex justify-content-center">
+                                                    <input class="form-check-input schedule-toggle" type="checkbox" 
+                                                           name="schedule[{{ strtolower($day) }}][active]" 
+                                                           id="toggle{{ $day }}" 
+                                                           onchange="toggleSchedule('{{ $day }}')">
+                                                </div>
+                                            </td>
+                                            <td class="py-3 px-4 text-center">
+                                                <input type="time" name="schedule[{{ strtolower($day) }}][jam_masuk]" 
+                                                       class="form-control text-center border-0 time-input-{{ $day }}" 
+                                                       value="07:00" style="background: #f8f9fa; border-radius: 8px;"
+                                                       disabled>
+                                            </td>
+                                            <td class="py-3 px-4 text-center">
+                                                <input type="time" name="schedule[{{ strtolower($day) }}][jam_pulang]" 
+                                                       class="form-control text-center border-0 time-input-{{ $day }}" 
+                                                       value="{{ $day == 'Jumat' ? '11:30' : '15:30' }}" 
+                                                       style="background: #f8f9fa; border-radius: 8px;"
+                                                       disabled>
+                                            </td>
+                                            <td class="py-3 px-4 text-center">
+                                                <span class="badge status-badge-{{ $day }}" 
+                                                      style="background: #6c757d; padding: 8px 16px; border-radius: 20px;">
+                                                    Libur
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Info Box Bottom -->
+                            <div class="alert alert-info border-0 mt-4" style="background: #e3f2fd; border-radius: 10px;">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Catatan:</strong> Jika status diatur ke "Libur", guru tidak akan bisa melakukan presensi pada hari tersebut.
+                            </div>
+                        </div>
+
+                        <!-- Updated action buttons to match design -->
+                        <div class="d-flex gap-3 justify-content-between p-4 border-top">
+                            <a href="{{ url('/guru') }}" class="btn btn-lg px-4 py-2 border-0 shadow-sm" 
+                               style="background: #74b9ff; color: white; border-radius: 10px;">
+                                <i class="fas fa-arrow-left me-2"></i>Kembali
+                            </a>
+                            <!-- Changed button to handle tab navigation before form submission -->
+                            <button type="button" id="nextButton" class="btn btn-lg px-4 py-2 border-0 shadow-sm"
+                                    style="background: #00b894; color: white; border-radius: 10px;" onclick="handleNextButton()">
+                                <i class="fas fa-arrow-right me-2"></i><span id="buttonText">Selanjutnya</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentTab = 'dataUmum';
+
+function switchTab(tabName) {
+    // Hide all tab contents
+    document.getElementById('dataUmumContent').style.display = 'none';
+    document.getElementById('jadwalContent').style.display = 'none';
+    
+    // Remove active class from all tabs
+    document.getElementById('dataUmumTab').style.background = '#ddd';
+    document.getElementById('dataUmumTab').style.color = '#666';
+    document.getElementById('jadwalTab').style.background = '#ddd';
+    document.getElementById('jadwalTab').style.color = '#666';
+    
+    // Show selected tab content and activate tab
+    if (tabName === 'dataUmum') {
+        document.getElementById('dataUmumContent').style.display = 'block';
+        document.getElementById('dataUmumTab').style.background = '#74b9ff';
+        document.getElementById('dataUmumTab').style.color = 'white';
+        currentTab = 'dataUmum';
+        document.getElementById('buttonText').textContent = 'Selanjutnya';
+    } else if (tabName === 'jadwal') {
+        document.getElementById('jadwalContent').style.display = 'block';
+        document.getElementById('jadwalTab').style.background = '#74b9ff';
+        document.getElementById('jadwalTab').style.color = 'white';
+        currentTab = 'jadwal';
+        document.getElementById('buttonText').textContent = 'Simpan Data';
+    }
+}
+
+function handleNextButton() {
+    if (currentTab === 'dataUmum') {
+        // Validate required fields in Data Umum tab first
+        const nip = document.querySelector('input[name="nip"]').value.trim();
+        const nama = document.querySelector('input[name="nama"]').value.trim();
+        const jabatan = document.querySelector('input[name="jabatan"]').value.trim();
+        const uid = document.querySelector('input[name="uid"]').value.trim();
+        
+        if (!nip || !nama || !jabatan || !uid) {
+            alert('Mohon lengkapi semua data yang diperlukan terlebih dahulu!');
+            return;
+        }
+        
+        // Switch to schedule tab
+        switchTab('jadwal');
+    } else if (currentTab === 'jadwal') {
+        // Submit the form
+        document.getElementById('guruForm').submit();
+    }
+}
+
+function toggleSchedule(day) {
+    const toggle = document.getElementById('toggle' + day);
+    const timeInputs = document.querySelectorAll('.time-input-' + day);
+    const statusBadge = document.querySelector('.status-badge-' + day);
+    
+    if (toggle.checked) {
+        timeInputs.forEach(input => input.disabled = false);
+        statusBadge.textContent = 'Aktif';
+        statusBadge.style.background = '#28a745';
+    } else {
+        timeInputs.forEach(input => input.disabled = true);
+        statusBadge.textContent = 'Libur';
+        statusBadge.style.background = '#6c757d';
+    }
+}
+
+class RFIDFormHandler {
+    constructor() {
+        this.uidInput = document.getElementById('uid')
+        this.spinner = document.getElementById('uid-spinner')
+        this.checkIcon = document.getElementById('uid-check')
+        this.scanIcon = document.getElementById('uid-scan-icon')
+        this.statusText = document.getElementById('uid-status')
+        
+        console.log('RFID Form Handler initialized')
+        this.setupInputHandlers()
+    }
+
+    setupInputHandlers() {
+        this.uidInput.addEventListener('focus', () => {
+            this.uidInput.removeAttribute('readonly')
+            if (!this.uidInput.value) {
+                this.showScanning()
+            }
+        })
+
+        this.uidInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault() // Prevent form submission
+                this.uidInput.setAttribute('readonly', true) // Make readonly again after input
+                this.uidInput.blur() // Remove focus to stop further input
+                return false
+            }
+        })
+
+        this.uidInput.addEventListener('input', (e) => {
+            const uid = e.target.value.trim()
+            if (uid.length > 0) {
+                this.showSuccess(uid)
+            } else {
+                this.showScanning()
+            }
+        })
+
+        this.uidInput.addEventListener('blur', () => {
+            this.uidInput.setAttribute('readonly', true) // Make readonly when not focused
+            if (this.uidInput.value) {
+                this.showSuccess(this.uidInput.value)
+            }
+        })
+    }
+
+    showSuccess(uid) {
+        this.uidInput.style.background = '#e8f5e8'
+        this.spinner.style.display = 'none'
+        this.scanIcon.style.display = 'none'
+        this.checkIcon.style.display = 'block'
+        this.statusText.textContent = 'UID berhasil terbaca: ' + uid + ' - Silakan lengkapi data lain dan tekan Simpan'
+        this.statusText.parentElement.className = 'text-success mt-1 d-block'
+    }
+
+    showScanning() {
+        this.uidInput.style.background = '#f8f9fa'
+        this.spinner.style.display = 'none'
+        this.checkIcon.style.display = 'none'
+        this.scanIcon.style.display = 'block'
+        this.statusText.textContent = 'Tempelkan kartu RFID pada reader untuk mengisi UID'
+        this.statusText.parentElement.className = 'text-muted mt-1 d-block'
+    }
+}
+
+// Initialize when DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.rfidFormHandler = new RFIDFormHandler()
+})
+</script>
+
+<!-- Script Face-API.js untuk Deteksi & Ekstraksi Wajah -->
+<script src="{{ asset('js/face-api.min.js') }}"></script>
+<script>
+let faceModelsLoaded = false;
+let webcamStream = null;
+const MODEL_URL = "{{ asset('models') }}";
+
+async function loadFaceModels() {
+    if (faceModelsLoaded) return true;
+    updateFaceStatus('loading', 'Memuat modul AI Face Recognition...');
+    try {
+        await Promise.all([
+            faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        faceModelsLoaded = true;
+        updateFaceStatus('info', 'Modul AI siap. Silakan upload atau jepret foto wajah.');
+        return true;
+    } catch (err) {
+        console.error('Gagal memuat model face-api:', err);
+        updateFaceStatus('danger', 'Gagal memuat model AI: ' + err.message);
+        return false;
+    }
+}
+
+function updateFaceStatus(type, message) {
+    const badge = document.getElementById('faceStatusBadge');
+    const icon = document.getElementById('faceStatusIcon');
+    const text = document.getElementById('faceStatusText');
+
+    badge.className = 'mt-3 alert py-2 px-3 border-0 d-flex align-items-center mb-0';
+    if (type === 'loading') {
+        badge.classList.add('alert-info');
+        icon.className = 'fas fa-spinner fa-spin me-2 fs-5 text-info';
+    } else if (type === 'success') {
+        badge.classList.add('alert-success');
+        icon.className = 'fas fa-check-circle me-2 fs-5 text-success';
+    } else if (type === 'warning') {
+        badge.classList.add('alert-warning');
+        icon.className = 'fas fa-exclamation-triangle me-2 fs-5 text-warning';
+    } else if (type === 'danger') {
+        badge.classList.add('alert-danger');
+        icon.className = 'fas fa-times-circle me-2 fs-5 text-danger';
+    } else {
+        badge.classList.add('alert-secondary');
+        icon.className = 'fas fa-info-circle me-2 fs-5 text-secondary';
+    }
+    text.textContent = message;
+}
+
+function setFaceMode(mode) {
+    const btnUpload = document.getElementById('btnModeUpload');
+    const btnWebcam = document.getElementById('btnModeWebcam');
+    const secUpload = document.getElementById('sectionUpload');
+    const secWebcam = document.getElementById('sectionWebcam');
+
+    if (mode === 'upload') {
+        btnUpload.classList.add('active');
+        btnWebcam.classList.remove('active');
+        secUpload.style.display = 'block';
+        secWebcam.style.display = 'none';
+        stopWebcam();
+    } else {
+        btnWebcam.classList.add('active');
+        btnUpload.classList.remove('active');
+        secUpload.style.display = 'none';
+        secWebcam.style.display = 'block';
+        startWebcam();
+    }
+}
+
+async function startWebcam() {
+    try {
+        const video = document.getElementById('webcamVideo');
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+            audio: false
+        });
+        video.srcObject = webcamStream;
+        await loadFaceModels();
+    } catch (err) {
+        console.error('Kamera gagal diakses:', err);
+        updateFaceStatus('danger', 'Kamera tidak dapat diakses atau izin kamera ditolak.');
+    }
+}
+
+function stopWebcam() {
+    if (webcamStream) {
+        webcamStream.getTracks().forEach(t => t.stop());
+        webcamStream = null;
+    }
+}
+
+async function captureFromWebcam() {
+    const video = document.getElementById('webcamVideo');
+    if (!video.videoWidth) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], 'foto_wajah_' + Date.now() + '.jpg', { type: 'image/jpeg' });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const fotoInput = document.getElementById('fotoInput');
+        fotoInput.files = dt.files;
+
+        // Tampilkan preview
+        const img = document.getElementById('facePreviewImage');
+        img.src = canvas.toDataURL('image/jpeg');
+        document.getElementById('facePreviewWrapper').style.display = 'block';
+
+        img.onload = () => {
+            processFaceDetection(img);
+        };
+    }, 'image/jpeg', 0.9);
+}
+
+const fotoInputElement = document.getElementById('fotoInput');
+if (fotoInputElement) {
+    fotoInputElement.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const img = document.getElementById('facePreviewImage');
+            img.src = evt.target.result;
+            document.getElementById('facePreviewWrapper').style.display = 'block';
+            img.onload = () => {
+                processFaceDetection(img);
+            };
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+async function processFaceDetection(imageEl) {
+    const loaded = await loadFaceModels();
+    if (!loaded) return;
+
+    updateFaceStatus('loading', 'Menganalisis wajah dengan AI...');
+    try {
+        const detection = await faceapi.detectSingleFace(imageEl)
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+        const canvas = document.getElementById('faceOverlayCanvas');
+        canvas.width = imageEl.width;
+        canvas.height = imageEl.height;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (detection) {
+            const descriptorArray = Array.from(detection.descriptor);
+            document.getElementById('face_descriptor').value = JSON.stringify(descriptorArray);
+
+            const displaySize = { width: imageEl.width, height: imageEl.height };
+            faceapi.matchDimensions(canvas, displaySize);
+            const resized = faceapi.resizeResults(detection, displaySize);
+            faceapi.draw.drawDetections(canvas, resized);
+            faceapi.draw.drawFaceLandmarks(canvas, resized);
+
+            updateFaceStatus('success', 'Wajah berhasil dikenali & fitur descriptor AI berhasil diekstrak!');
+        } else {
+            document.getElementById('face_descriptor').value = '';
+            updateFaceStatus('warning', 'Wajah tidak terdeteksi! Gunakan foto yang jelas, tegak lurus, dan cukup cahaya.');
+        }
+    } catch (err) {
+        console.error('Error saat deteksi wajah:', err);
+        updateFaceStatus('danger', 'Gagal memproses wajah: ' + err.message);
+    }
+}
+
+// Preload models saat halaman dibuka
+document.addEventListener('DOMContentLoaded', () => {
+    loadFaceModels();
+});
+</script>
+
+<style>
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.form-check-input {
+    width: 3rem;
+    height: 1.5rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+</style>
+@endsection

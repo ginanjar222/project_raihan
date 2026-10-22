@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+  /* Updated font family to DM Sans as per design brief */
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+
+  /* Added design tokens for elegant white theme with sky blue sidebar */
+  --color-background: #ffffff;
+  --color-foreground: #4b5563;
+  --color-card: #f9f9f9;
+  --color-card-foreground: #4b5563;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #4b5563;
+  --color-primary: #64b6f7;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #007acc;
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #f9f9f9;
+  --color-muted-foreground: #6b7280;
+  --color-accent: #007acc;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e5e7eb;
+  --color-input: #ffffff;
+  --color-ring: #64b6f7;
+  --color-sidebar: #64b6f7;
+  --color-sidebar-foreground: #ffffff;
+  --color-sidebar-primary: #64b6f7;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #007acc;
+  --color-sidebar-accent-foreground: #ffffff;
+  --color-sidebar-border: #e5e7eb;
+  --color-sidebar-ring: #64b6f7;
+
+  /* Added chart colors for data visualization */
+  --color-chart-1: #64b6f7;
+  --color-chart-2: #007acc;
+  --color-chart-3: #4b5563;
+  --color-chart-4: #f9f9f9;
+  --color-chart-5: #ffffff;
+
+  /* Added border radius for consistent rounded corners */
+  --radius: 0.5rem;
+}
+
+/* Added custom utility classes for the new design system */
+@layer utilities {
+  .bg-sidebar {
+    background-color: var(--color-sidebar);
+  }
+
+  .text-sidebar-foreground {
+    color: var(--color-sidebar-foreground);
+  }
+
+  .bg-card {
+    background-color: var(--color-card);
+  }
+
+  .text-card-foreground {
+    color: var(--color-card-foreground);
+  }
+
+  .bg-elegant-white {
+    background-color: var(--color-background);
+  }
+
+  .text-elegant-gray {
+    color: var(--color-foreground);
+  }
+
+  .border-elegant {
+    border-color: var(--color-border);
+  }
+}
