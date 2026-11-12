@@ -19,15 +19,18 @@ class GuruController extends Controller
     {
         return view('guru.create');
     }
-    
     public function store(Request $request)
     {
+        $fotoRule = extension_loaded('fileinfo') 
+            ? 'nullable|image|mimes:jpeg,jpg,png|max:5120' 
+            : 'nullable|max:5120';
+
         $request->validate([
             'nip' => 'required|string|unique:guru,nip',
             'nama' => 'required|string|max:255',
             'jabatan' => 'required|string|max:255',
             'uid' => 'required|string|unique:guru,uid',
-            'foto' => 'nullable|image|mimes:jpeg,jpg,png|max:5120',
+            'foto' => $fotoRule,
             'face_descriptor' => 'nullable|string',
             'schedule' => 'required|array'
         ], [
@@ -42,7 +45,10 @@ class GuruController extends Controller
         
         $fotoPath = null;
         if ($request->hasFile('foto')) {
-            $fotoPath = $request->file('foto')->store('guru_photos', 'public');
+            $file = $request->file('foto');
+            $ext = $file->getClientOriginalExtension() ?: 'jpg';
+            $fileName = 'guru_' . time() . '_' . uniqid() . '.' . $ext;
+            $fotoPath = $file->storeAs('guru_photos', $fileName, 'public');
         }
 
         $guru = Guru::create([
@@ -99,12 +105,16 @@ class GuruController extends Controller
     {
         $guru = Guru::findOrFail($id);
         
+        $fotoRule = extension_loaded('fileinfo') 
+            ? 'nullable|image|mimes:jpeg,jpg,png|max:5120' 
+            : 'nullable|max:5120';
+
         $request->validate([
             'nip' => 'required|string|unique:guru,nip,' . $id,
             'nama' => 'required|string|max:255',
             'jabatan' => 'required|string|max:255',
             'uid' => 'required|string|unique:guru,uid,' . $id,
-            'foto' => 'nullable|image|mimes:jpeg,jpg,png|max:5120',
+            'foto' => $fotoRule,
             'face_descriptor' => 'nullable|string'
         ], [
             'nip.unique' => 'NIP sudah ada, silakan gunakan NIP yang berbeda.',
@@ -126,7 +136,10 @@ class GuruController extends Controller
             if ($guru->foto && Storage::disk('public')->exists($guru->foto)) {
                 Storage::disk('public')->delete($guru->foto);
             }
-            $updateData['foto'] = $request->file('foto')->store('guru_photos', 'public');
+            $file = $request->file('foto');
+            $ext = $file->getClientOriginalExtension() ?: 'jpg';
+            $fileName = 'guru_' . time() . '_' . uniqid() . '.' . $ext;
+            $updateData['foto'] = $file->storeAs('guru_photos', $fileName, 'public');
         }
         
         if ($request->filled('face_descriptor')) {

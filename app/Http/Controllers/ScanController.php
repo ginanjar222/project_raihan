@@ -27,9 +27,13 @@ class ScanController extends Controller
     
     public function process(Request $request)
     {
+        $photoRule = extension_loaded('fileinfo') 
+            ? 'nullable|image|mimes:jpeg,jpg,png|max:2048' 
+            : 'nullable|max:2048';
+
         $request->validate([
             'uid' => 'required|string',
-            'photo' => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
+            'photo' => $photoRule,
             'face_descriptor' => 'nullable|string'
         ]);
         
